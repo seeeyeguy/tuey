@@ -47,6 +47,14 @@ pub fn main(init: std.process.Init) !void {
     // Sends queries to terminal to detect certain features.  Called after entering alt screen
     try vx.queryTerminal(tty.writer(), .fromSeconds(1));
 
+    std.log.debug("in_band_resize after query: {}", .{vx.state.in_band_resize});
+
+    // Under tmux, in-band resize negotiation can report as supported without
+    // tmux ever actually emitting the corresponding resize sequences, which
+    // silently disables vaxis's SIGWINCH-based fallback. Force it off so we
+    // always rely on SIGWINCH + ioctl(TIOCGWINSZ) for resize detection.
+    vx.state.in_band_resize = false;
+
     while (true) {
         // nextEvent blocks event loop until an event is in the queue
         const event = try loop.nextEvent();
@@ -66,7 +74,10 @@ pub fn main(init: std.process.Init) !void {
                     try text_input.update(.{ .key_press = key });
                 }
             },
-            .winsize => |ws| try vx.resize(alloc, tty.writer(), ws),
+            .winsize => |ws| {
+                try vx.resize(alloc, tty.writer(), ws);
+                std.log.debug("winsize: {any}", .{ws});
+            },
             else => {}
         }
 
