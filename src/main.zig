@@ -10,6 +10,11 @@ const Event = union(enum) {
     foo: u8,
 };
 
+const AppState = struct {
+    cols: u16 = undefined,
+    rows: u16 = undefined,
+};
+
 pub fn main(init: std.process.Init) !void {
     std.debug.print("Starting tuey ... {s}", .{"test run"});
     
@@ -66,7 +71,10 @@ pub fn main(init: std.process.Init) !void {
                     try text_input.update(.{ .key_press = key });
                 }
             },
-            .winsize => |ws| try vx.resize(alloc, tty.writer(), ws),
+            .winsize => |ws| {
+                 try vx.resize(alloc, tty.writer(), ws);
+                 std.log.debug("winsize: {any}", .{ws});
+            },
             else => {}
         }
 
