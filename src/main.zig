@@ -49,9 +49,16 @@ pub fn main(init: std.process.Init) !void {
 
     std.log.debug("in_band_resize after query: {}", .{vx.state.in_band_resize});
 
-    while (true) {
-        var oldwin: vaxis.Window = undefined;
+    // Force signal-driven resize: vaxis's winsizeCallback silently fails when
+    // called from POSIX signal handler context because it tries to use
+    // std.Io.Mutex (not async-signal-safe in the new io model). Keeping
+    // in_band_resize false so the SIGWINCH path stays active is correct, but
+    // the postEvent call itself is the actual broken link in this vaxis commit.
+    vx.state.in_band_resize = false;
 
+    var oldwin: vaxis.Window = vx.window();
+
+    while (true) {
         // nextEvent blocks event loop until an event is in the queue
         const event = try loop.nextEvent();
 
@@ -79,8 +86,8 @@ pub fn main(init: std.process.Init) !void {
 
         const win: vaxis.Window = vx.window();
 
-        if (std.meta.eql(win, oldwin)) {
-            std.log.debug("win {}", .{win});
+        if (!std.meta.eql(win, oldwin)) {
+            std.log.debug("win changed: {}x{} -> {}x{}", .{ oldwin.width, oldwin.height, win.width, win.height });
         }
 
         win.clear();
@@ -108,6 +115,7 @@ pub fn main(init: std.process.Init) !void {
 	// performance, but is not required
         try vx.render(tty.writer());
         oldwin = win;
+
     }
 }
 
