@@ -86,7 +86,7 @@ pub fn main(init: std.process.Init) !void {
 
         const win: vaxis.Window = vx.window();
 
-        if (!std.meta.eql(win, oldwin)) {
+        if (win.width != oldwin.width or win.height != oldwin.height) {
             std.log.debug("win changed: {}x{} -> {}x{}", .{ oldwin.width, oldwin.height, win.width, win.height });
         }
 
