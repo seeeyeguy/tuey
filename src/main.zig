@@ -47,6 +47,17 @@ pub fn main(init: std.process.Init) !void {
     // Sends queries to terminal to detect certain features.  Called after entering alt screen
     try vx.queryTerminal(tty.writer(), .fromSeconds(1));
 
+    std.log.debug("in_band_resize after query: {}", .{vx.state.in_band_resize});
+
+    // Force signal-driven resize: vaxis's winsizeCallback silently fails when
+    // called from POSIX signal handler context because it tries to use
+    // std.Io.Mutex (not async-signal-safe in the new io model). Keeping
+    // in_band_resize false so the SIGWINCH path stays active is correct, but
+    // the postEvent call itself is the actual broken link in this vaxis commit.
+    vx.state.in_band_resize = false;
+
+    var oldwin: vaxis.Window = vx.window();
+
     while (true) {
         // nextEvent blocks event loop until an event is in the queue
         const event = try loop.nextEvent();
@@ -66,11 +77,19 @@ pub fn main(init: std.process.Init) !void {
                     try text_input.update(.{ .key_press = key });
                 }
             },
-            .winsize => |ws| try vx.resize(alloc, tty.writer(), ws),
+            .winsize => |ws| {
+                try vx.resize(alloc, tty.writer(), ws);
+                std.log.debug("winsize: {any}", .{ws});
+            },
             else => {}
         }
 
-        const win = vx.window();
+        const win: vaxis.Window = vx.window();
+
+        if (win.width != oldwin.width or win.height != oldwin.height) {
+            std.log.debug("win changed: {}x{} -> {}x{}", .{ oldwin.width, oldwin.height, win.width, win.height });
+        }
+
         win.clear();
         // Create a style
         const style: vaxis.Style = .{
@@ -95,9 +114,8 @@ pub fn main(init: std.process.Init) !void {
         // Render the screen. Using a buffered writer will offer much better
 	// performance, but is not required
         try vx.render(tty.writer());
-        
+        oldwin = win;
+
     }
-
-
 }
 
