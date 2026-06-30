@@ -49,13 +49,9 @@ pub fn main(init: std.process.Init) !void {
 
     std.log.debug("in_band_resize after query: {}", .{vx.state.in_band_resize});
 
-    // Under tmux, in-band resize negotiation can report as supported without
-    // tmux ever actually emitting the corresponding resize sequences, which
-    // silently disables vaxis's SIGWINCH-based fallback. Force it off so we
-    // always rely on SIGWINCH + ioctl(TIOCGWINSZ) for resize detection.
-    vx.state.in_band_resize = false;
-
     while (true) {
+        var oldwin: vaxis.Window = undefined;
+
         // nextEvent blocks event loop until an event is in the queue
         const event = try loop.nextEvent();
 
@@ -81,7 +77,12 @@ pub fn main(init: std.process.Init) !void {
             else => {}
         }
 
-        const win = vx.window();
+        const win: vaxis.Window = vx.window();
+
+        if (std.meta.eql(win, oldwin)) {
+            std.log.debug("win {}", .{win});
+        }
+
         win.clear();
         // Create a style
         const style: vaxis.Style = .{
@@ -106,9 +107,7 @@ pub fn main(init: std.process.Init) !void {
         // Render the screen. Using a buffered writer will offer much better
 	// performance, but is not required
         try vx.render(tty.writer());
-        
+        oldwin = win;
     }
-
-
 }
 

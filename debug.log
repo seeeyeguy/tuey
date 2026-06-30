@@ -1,0 +1,4 @@
+Starting tuey ... test runafter deinitinfo(vaxis): color_scheme_updates capability detected
+debug: in_band_resize after query: false
+debug(vaxis): resizing screen: width=95 height=41
+debug: winsize: .{ .rows = 41, .cols = 95, .x_pixel = 950, .y_pixel = 943 }
